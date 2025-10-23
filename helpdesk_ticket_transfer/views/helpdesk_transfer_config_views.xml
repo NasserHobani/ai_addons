@@ -118,14 +118,6 @@
         <field name="arch" type="xml">
             <form string="Transfer History" create="false" edit="false">
                 <sheet>
-                    <div class="oe_button_box" name="button_box">
-                        <button class="oe_stat_button" type="object" name="action_open_remote_ticket" icon="fa-external-link" invisible="not remote_ticket_url">
-                            <div class="o_field_widget o_stat_info">
-                                <span class="o_stat_text">Open Remote</span>
-                                <span class="o_stat_text">Ticket</span>
-                            </div>
-                        </button>
-                    </div>
                     <group>
                         <group>
                             <field name="ticket_id"/>
