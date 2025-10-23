@@ -1,0 +1,212 @@
+[options]
+# This is a comprehensive Odoo 17 configuration file optimized for handling timeouts
+
+# ==============================================================================
+# BASIC SETTINGS
+# ==============================================================================
+
+# Database settings
+db_host = localhost
+db_port = 5432
+db_user = odoo
+db_password = your_secure_password
+# db_name = False  # Uncomment to restrict to specific database
+# db_template = template0
+
+# Filter databases shown in database manager
+# dbfilter = ^your_db_prefix.*$
+
+# ==============================================================================
+# SERVER SETTINGS
+# ==============================================================================
+
+# HTTP Service
+http_interface = 0.0.0.0
+http_port = 8069
+# Enable behind proxy
+proxy_mode = True
+
+# Long-polling service for chat/notifications
+gevent_port = 8072
+
+# ==============================================================================
+# WORKER SETTINGS (Production)
+# ==============================================================================
+
+# Number of worker processes
+# Formula: (number_of_cpu_cores * 2) + 1
+# Set to 0 for development (single-threaded mode)
+workers = 4
+
+# Maximum number of cron threads
+max_cron_threads = 2
+
+# ==============================================================================
+# TIMEOUT SETTINGS (Critical for preventing timeouts)
+# ==============================================================================
+
+# CPU time limit per request (in seconds)
+# Default: 60 seconds
+# Increase for long-running operations like reports, exports, imports
+limit_time_cpu = 600
+
+# Real time limit per request (in seconds)  
+# Default: 120 seconds
+# Should be higher than limit_time_cpu
+limit_time_real = 1200
+
+# Real time limit for cron jobs (in seconds)
+# Default: -1 (unlimited, but not recommended)
+# Set appropriate timeout for your longest cron job
+limit_time_real_cron = 3600
+
+# ==============================================================================
+# MEMORY LIMITS
+# ==============================================================================
+
+# Soft memory limit per worker (in bytes)
+# Worker will recycle after processing current request
+# 2GB = 2147483648 bytes
+limit_memory_soft = 2147483648
+
+# Hard memory limit per worker (in bytes)
+# Worker will be killed immediately if exceeded
+# 2.5GB = 2684354560 bytes
+limit_memory_hard = 2684354560
+
+# ==============================================================================
+# DATABASE CONNECTION SETTINGS
+# ==============================================================================
+
+# Maximum number of physical database connections per worker
+# Formula: (workers * 2) + max_cron_threads + 4
+# Default: 64
+db_maxconn = 64
+
+# Maximum number of database connections for gevent mode
+db_maxconn_gevent = 100
+
+# Maximum time to wait for database cursor (in seconds)
+# db_timeout = 60
+
+# ==============================================================================
+# REQUEST LIMITS
+# ==============================================================================
+
+# Maximum allowed request size (in bytes)
+# 8192 = 8KB for standard requests
+limit_request = 8192
+
+# ==============================================================================
+# LOGGING
+# ==============================================================================
+
+# Log file location (False to use stdout)
+logfile = /var/log/odoo/odoo-server.log
+
+# Log rotation
+logrotate = True
+
+# Log level: debug, info, warning, error, critical
+log_level = info
+
+# Log database queries
+log_db = False
+log_db_level = warning
+
+# Log HTTP requests
+log_handler = :INFO
+
+# ==============================================================================
+# SECURITY
+# ==============================================================================
+
+# Admin password for database operations (change this!)
+admin_passwd = your_very_secure_admin_password
+
+# Allowed hosts (comma-separated, for proxy_mode)
+# http_allowed_hosts = your-domain.com,www.your-domain.com
+
+# ==============================================================================
+# PATHS
+# ==============================================================================
+
+# Addons paths (comma-separated)
+addons_path = /opt/odoo/odoo/addons,/opt/odoo/custom_addons
+
+# Data directory for filestore and session data
+data_dir = /var/lib/odoo
+
+# ==============================================================================
+# EMAIL SETTINGS
+# ==============================================================================
+
+# SMTP settings
+# email_from = odoo@your-domain.com
+# smtp_server = smtp.gmail.com
+# smtp_port = 587
+# smtp_ssl = False
+# smtp_user = your-email@gmail.com
+# smtp_password = your-email-password
+
+# ==============================================================================
+# PERFORMANCE TUNING
+# ==============================================================================
+
+# Server-wide modules to load at startup
+# server_wide_modules = base,web
+server_wide_modules = base,web,queue_job
+
+# Osv memory cache manager settings (percentage)
+osv_memory_age_limit = 1.0
+osv_memory_count_limit = False
+
+# Virtual memory ratio for worker recycle
+# Worker will recycle when exceeding this ratio
+# virtual_memory_ratio = 0.8
+
+# ==============================================================================
+# DEVELOPMENT SETTINGS (Disable in production!)
+# ==============================================================================
+
+# Automatically reload when Python files change (dev only)
+# dev_mode = reload
+
+# Enable Werkzeug debugger (dev only)
+# dev_mode = werkzeug
+
+# Test mode
+# test_enable = False
+# test_file = False
+# test_tags = False
+
+# ==============================================================================
+# GEOLOCATION SETTINGS
+# ==============================================================================
+
+# GeoIP database path for geolocation features
+# geoip_database = /usr/share/GeoIP/GeoLite2-City.mmdb
+
+# ==============================================================================
+# WEBSOCKET SETTINGS (Odoo 17+)
+# ==============================================================================
+
+# Websocket rate limiting
+# websocket_rate_limit_burst = 10
+# websocket_rate_limit_delay = 0.2
+
+# ==============================================================================
+# ADDITIONAL TIMEOUT CONSIDERATIONS
+# ==============================================================================
+
+# For extremely long operations, consider:
+# 1. Using queue_job module for background processing
+# 2. Breaking operations into smaller batches with commits
+# 3. Optimizing database queries with proper indexes
+# 4. Increasing web server (nginx/apache) timeout settings
+# 5. Monitoring and profiling slow operations
+
+# Remember to also configure:
+# - PostgreSQL statement_timeout
+# - Nginx/Apache proxy_read_timeout
+# - Load balancer timeouts if applicable

@@ -1,0 +1,133 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Timeout Log Tree View -->
+    <record id="view_timeout_log_tree" model="ir.ui.view">
+        <field name="name">timeout.log.tree</field>
+        <field name="model">timeout.log</field>
+        <field name="arch" type="xml">
+            <tree string="Timeout Logs" decoration-danger="exceeded">
+                <field name="create_date"/>
+                <field name="name"/>
+                <field name="model_name"/>
+                <field name="method_name"/>
+                <field name="duration" widget="float_time"/>
+                <field name="threshold" widget="float_time"/>
+                <field name="exceeded"/>
+                <field name="user_id"/>
+            </tree>
+        </field>
+    </record>
+
+    <!-- Timeout Log Form View -->
+    <record id="view_timeout_log_form" model="ir.ui.view">
+        <field name="name">timeout.log.form</field>
+        <field name="model">timeout.log</field>
+        <field name="arch" type="xml">
+            <form string="Timeout Log">
+                <sheet>
+                    <group>
+                        <group>
+                            <field name="name"/>
+                            <field name="model_name"/>
+                            <field name="method_name"/>
+                            <field name="user_id"/>
+                        </group>
+                        <group>
+                            <field name="duration" widget="float_time"/>
+                            <field name="threshold" widget="float_time"/>
+                            <field name="exceeded"/>
+                            <field name="record_id"/>
+                            <field name="create_date"/>
+                        </group>
+                    </group>
+                    <group string="Context Information" invisible="not context_info">
+                        <field name="context_info" nolabel="1"/>
+                    </group>
+                    <group string="Error Details" invisible="not error_message">
+                        <field name="error_message" nolabel="1"/>
+                        <field name="traceback" nolabel="1" invisible="not traceback"/>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <!-- Timeout Log Search View -->
+    <record id="view_timeout_log_search" model="ir.ui.view">
+        <field name="name">timeout.log.search</field>
+        <field name="model">timeout.log</field>
+        <field name="arch" type="xml">
+            <search string="Search Timeout Logs">
+                <field name="name"/>
+                <field name="model_name"/>
+                <field name="method_name"/>
+                <field name="user_id"/>
+                <filter string="Exceeded Threshold" name="exceeded" domain="[('exceeded', '=', True)]"/>
+                <filter string="Today" name="today" domain="[('create_date', '&gt;=', datetime.datetime.now().replace(hour=0, minute=0, second=0))]"/>
+                <filter string="Last 7 Days" name="last_week" domain="[('create_date', '&gt;=', (context_today() - datetime.timedelta(days=7)).strftime('%Y-%m-%d'))]"/>
+                <group expand="0" string="Group By">
+                    <filter string="Model" name="group_model" context="{'group_by': 'model_name'}"/>
+                    <filter string="Method" name="group_method" context="{'group_by': 'method_name'}"/>
+                    <filter string="User" name="group_user" context="{'group_by': 'user_id'}"/>
+                    <filter string="Date" name="group_date" context="{'group_by': 'create_date:day'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <!-- Timeout Log Graph View -->
+    <record id="view_timeout_log_graph" model="ir.ui.view">
+        <field name="name">timeout.log.graph</field>
+        <field name="model">timeout.log</field>
+        <field name="arch" type="xml">
+            <graph string="Timeout Analysis" type="bar">
+                <field name="model_name"/>
+                <field name="duration" type="measure"/>
+            </graph>
+        </field>
+    </record>
+
+    <!-- Timeout Log Pivot View -->
+    <record id="view_timeout_log_pivot" model="ir.ui.view">
+        <field name="name">timeout.log.pivot</field>
+        <field name="model">timeout.log</field>
+        <field name="arch" type="xml">
+            <pivot string="Timeout Analysis">
+                <field name="model_name" type="row"/>
+                <field name="method_name" type="row"/>
+                <field name="duration" type="measure"/>
+            </pivot>
+        </field>
+    </record>
+
+    <!-- Timeout Log Action -->
+    <record id="action_timeout_log" model="ir.actions.act_window">
+        <field name="name">Timeout Logs</field>
+        <field name="res_model">timeout.log</field>
+        <field name="view_mode">tree,form,graph,pivot</field>
+        <field name="context">{'search_default_last_week': 1}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                No timeout logs found
+            </p>
+            <p>
+                Timeout logs are automatically created when operations exceed their time thresholds.
+                Use this view to monitor and analyze performance issues.
+            </p>
+        </field>
+    </record>
+
+    <!-- Menu Items -->
+    <menuitem id="menu_timeout_root"
+              name="Timeout Monitoring"
+              web_icon="timeout_handler,static/description/icon.png"
+              sequence="100"
+              groups="base.group_system"/>
+    
+    <menuitem id="menu_timeout_logs"
+              name="Timeout Logs"
+              parent="menu_timeout_root"
+              action="action_timeout_log"
+              sequence="10"/>
+
+</odoo>
