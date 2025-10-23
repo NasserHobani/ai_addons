@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Transfer Wizard Form View -->
+    <record id="view_helpdesk_ticket_transfer_wizard_form" model="ir.ui.view">
+        <field name="name">helpdesk.ticket.transfer.wizard.form</field>
+        <field name="model">helpdesk.ticket.transfer.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Transfer Helpdesk Ticket">
+                <group>
+                    <group>
+                        <field name="ticket_id" readonly="1"/>
+                        <field name="config_id" required="1"/>
+                    </group>
+                </group>
+                <group string="Transfer Options">
+                    <group>
+                        <field name="transfer_messages"/>
+                        <field name="transfer_followers"/>
+                        <field name="transfer_attachments"/>
+                    </group>
+                    <group>
+                        <field name="close_original"/>
+                        <field name="add_transfer_note"/>
+                    </group>
+                </group>
+                <group string="Additional Notes">
+                    <field name="notes" nolabel="1" placeholder="Add any additional notes about this transfer..."/>
+                </group>
+                <footer>
+                    <button string="Transfer" name="action_transfer" type="object" class="btn-primary"/>
+                    <button string="Cancel" class="btn-secondary" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <!-- Transfer Wizard Action -->
+    <record id="action_helpdesk_ticket_transfer_wizard" model="ir.actions.act_window">
+        <field name="name">Transfer Ticket</field>
+        <field name="res_model">helpdesk.ticket.transfer.wizard</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+        <field name="binding_model_id" ref="helpdesk.model_helpdesk_ticket"/>
+    </record>
+</odoo>

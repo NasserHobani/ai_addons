@@ -1,0 +1,192 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Transfer Configuration Form View -->
+    <record id="view_helpdesk_transfer_config_form" model="ir.ui.view">
+        <field name="name">helpdesk.transfer.config.form</field>
+        <field name="model">helpdesk.transfer.config</field>
+        <field name="arch" type="xml">
+            <form string="Helpdesk Transfer Configuration">
+                <header>
+                    <button name="test_connection" string="Test Connection" type="object" class="oe_highlight"/>
+                </header>
+                <sheet>
+                    <div class="oe_button_box" name="button_box">
+                        <button class="oe_stat_button" type="object" name="test_connection" icon="fa-plug">
+                            <field name="last_test_result" widget="statinfo" string="Status"/>
+                        </button>
+                    </div>
+                    <widget name="web_ribbon" title="Archived" bg_color="bg-danger" invisible="active"/>
+                    <div class="oe_title">
+                        <label for="name" string="Configuration Name"/>
+                        <h1>
+                            <field name="name" placeholder="e.g., Production Odoo"/>
+                        </h1>
+                    </div>
+                    <group>
+                        <group>
+                            <field name="active" invisible="1"/>
+                            <field name="odoo_url" placeholder="https://your-odoo-instance.com"/>
+                            <field name="database" placeholder="Database name"/>
+                            <field name="username" placeholder="admin or user login"/>
+                        </group>
+                        <group>
+                            <field name="api_key" password="True" placeholder="Password or API key"/>
+                            <field name="company_id" groups="base.group_multi_company"/>
+                            <field name="last_test_date" readonly="1"/>
+                        </group>
+                    </group>
+                    <notebook>
+                        <page string="Notes">
+                            <field name="notes" placeholder="Add any notes about this configuration..."/>
+                        </page>
+                    </notebook>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <!-- Transfer Configuration Tree View -->
+    <record id="view_helpdesk_transfer_config_tree" model="ir.ui.view">
+        <field name="name">helpdesk.transfer.config.tree</field>
+        <field name="model">helpdesk.transfer.config</field>
+        <field name="arch" type="xml">
+            <tree string="Transfer Configurations">
+                <field name="name"/>
+                <field name="odoo_url"/>
+                <field name="database"/>
+                <field name="last_test_result"/>
+                <field name="last_test_date"/>
+                <field name="active" widget="boolean_toggle"/>
+            </tree>
+        </field>
+    </record>
+
+    <!-- Transfer Configuration Search View -->
+    <record id="view_helpdesk_transfer_config_search" model="ir.ui.view">
+        <field name="name">helpdesk.transfer.config.search</field>
+        <field name="model">helpdesk.transfer.config</field>
+        <field name="arch" type="xml">
+            <search string="Search Transfer Configurations">
+                <field name="name"/>
+                <field name="odoo_url"/>
+                <field name="database"/>
+                <filter string="Active" name="active" domain="[('active', '=', True)]"/>
+                <filter string="Archived" name="inactive" domain="[('active', '=', False)]"/>
+            </search>
+        </field>
+    </record>
+
+    <!-- Transfer Configuration Action -->
+    <record id="action_helpdesk_transfer_config" model="ir.actions.act_window">
+        <field name="name">Transfer Configurations</field>
+        <field name="res_model">helpdesk.transfer.config</field>
+        <field name="view_mode">tree,form</field>
+        <field name="context">{'search_default_active': 1}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                Create your first transfer configuration
+            </p>
+            <p>
+                Configure destination Odoo instances to transfer helpdesk tickets.
+            </p>
+        </field>
+    </record>
+
+    <!-- Transfer History Tree View -->
+    <record id="view_helpdesk_ticket_transfer_history_tree" model="ir.ui.view">
+        <field name="name">helpdesk.ticket.transfer.history.tree</field>
+        <field name="model">helpdesk.ticket.transfer.history</field>
+        <field name="arch" type="xml">
+            <tree string="Transfer History" create="false" edit="false">
+                <field name="transfer_date"/>
+                <field name="ticket_id"/>
+                <field name="config_id"/>
+                <field name="remote_ticket_id"/>
+                <field name="transferred_by"/>
+                <field name="status" decoration-success="status == 'success'" decoration-danger="status == 'failed'" decoration-warning="status == 'partial'"/>
+                <field name="messages_transferred"/>
+                <field name="followers_transferred"/>
+                <field name="attachments_transferred"/>
+            </tree>
+        </field>
+    </record>
+
+    <!-- Transfer History Form View -->
+    <record id="view_helpdesk_ticket_transfer_history_form" model="ir.ui.view">
+        <field name="name">helpdesk.ticket.transfer.history.form</field>
+        <field name="model">helpdesk.ticket.transfer.history</field>
+        <field name="arch" type="xml">
+            <form string="Transfer History" create="false" edit="false">
+                <sheet>
+                    <div class="oe_button_box" name="button_box">
+                        <button class="oe_stat_button" type="object" name="action_open_remote_ticket" icon="fa-external-link" invisible="not remote_ticket_url">
+                            <div class="o_field_widget o_stat_info">
+                                <span class="o_stat_text">Open Remote</span>
+                                <span class="o_stat_text">Ticket</span>
+                            </div>
+                        </button>
+                    </div>
+                    <group>
+                        <group>
+                            <field name="ticket_id"/>
+                            <field name="config_id"/>
+                            <field name="remote_ticket_id"/>
+                            <field name="remote_ticket_url" widget="url"/>
+                        </group>
+                        <group>
+                            <field name="transfer_date"/>
+                            <field name="transferred_by"/>
+                            <field name="status"/>
+                        </group>
+                    </group>
+                    <group string="Transfer Statistics">
+                        <group>
+                            <field name="messages_transferred"/>
+                            <field name="followers_transferred"/>
+                        </group>
+                        <group>
+                            <field name="attachments_transferred"/>
+                        </group>
+                    </group>
+                    <group string="Notes">
+                        <field name="notes" nolabel="1"/>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <!-- Transfer History Action -->
+    <record id="action_helpdesk_ticket_transfer_history" model="ir.actions.act_window">
+        <field name="name">Transfer History</field>
+        <field name="res_model">helpdesk.ticket.transfer.history</field>
+        <field name="view_mode">tree,form</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                No transfer history yet
+            </p>
+            <p>
+                Transfer history will appear here once you start transferring tickets.
+            </p>
+        </field>
+    </record>
+
+    <!-- Menu Items -->
+    <menuitem id="menu_helpdesk_transfer_root"
+              name="Ticket Transfer"
+              parent="helpdesk.helpdesk_menu_config"
+              sequence="100"/>
+
+    <menuitem id="menu_helpdesk_transfer_config"
+              name="Transfer Configurations"
+              parent="menu_helpdesk_transfer_root"
+              action="action_helpdesk_transfer_config"
+              sequence="10"/>
+
+    <menuitem id="menu_helpdesk_transfer_history"
+              name="Transfer History"
+              parent="menu_helpdesk_transfer_root"
+              action="action_helpdesk_ticket_transfer_history"
+              sequence="20"/>
+
+</odoo>
