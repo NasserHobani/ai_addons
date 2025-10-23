@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Inherit Helpdesk Ticket Form View -->
+    <record id="view_helpdesk_ticket_form_inherit" model="ir.ui.view">
+        <field name="name">helpdesk.ticket.form.inherit</field>
+        <field name="model">helpdesk.ticket</field>
+        <field name="inherit_id" ref="helpdesk.helpdesk_ticket_view_form"/>
+        <field name="arch" type="xml">
+            <!-- Add Transfer button in header -->
+            <xpath expr="//header" position="inside">
+                <button name="action_transfer_ticket" 
+                        string="Transfer Ticket" 
+                        type="object" 
+                        class="oe_highlight"
+                        groups="helpdesk.group_helpdesk_user"/>
+            </xpath>
+            
+            <!-- Add stat button for transfer history -->
+            <xpath expr="//div[@name='button_box']" position="inside">
+                <button class="oe_stat_button" 
+                        type="object" 
+                        name="action_view_transfer_history" 
+                        icon="fa-exchange"
+                        invisible="transfer_count == 0">
+                    <field name="transfer_count" widget="statinfo" string="Transfers"/>
+                </button>
+            </xpath>
+            
+            <!-- Add transfer history page -->
+            <xpath expr="//notebook" position="inside">
+                <page string="Transfer History" name="transfer_history" invisible="transfer_count == 0">
+                    <field name="transfer_history_ids" readonly="1">
+                        <tree create="false" edit="false">
+                            <field name="transfer_date"/>
+                            <field name="config_id"/>
+                            <field name="remote_ticket_id"/>
+                            <field name="transferred_by"/>
+                            <field name="status" decoration-success="status == 'success'" decoration-danger="status == 'failed'"/>
+                            <field name="messages_transferred"/>
+                            <field name="followers_transferred"/>
+                            <field name="attachments_transferred"/>
+                        </tree>
+                    </field>
+                </page>
+            </xpath>
+        </field>
+    </record>
+</odoo>

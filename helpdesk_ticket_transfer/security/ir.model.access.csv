@@ -1,0 +1,7 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_helpdesk_transfer_config_manager,helpdesk.transfer.config manager,model_helpdesk_transfer_config,helpdesk.group_helpdesk_manager,1,1,1,1
+access_helpdesk_transfer_config_user,helpdesk.transfer.config user,model_helpdesk_transfer_config,helpdesk.group_helpdesk_user,1,0,0,0
+access_helpdesk_ticket_transfer_history_manager,helpdesk.ticket.transfer.history manager,model_helpdesk_ticket_transfer_history,helpdesk.group_helpdesk_manager,1,1,1,1
+access_helpdesk_ticket_transfer_history_user,helpdesk.ticket.transfer.history user,model_helpdesk_ticket_transfer_history,helpdesk.group_helpdesk_user,1,0,0,0
+access_helpdesk_ticket_transfer_wizard_manager,helpdesk.ticket.transfer.wizard manager,model_helpdesk_ticket_transfer_wizard,helpdesk.group_helpdesk_manager,1,1,1,1
+access_helpdesk_ticket_transfer_wizard_user,helpdesk.ticket.transfer.wizard user,model_helpdesk_ticket_transfer_wizard,helpdesk.group_helpdesk_user,1,1,1,0
