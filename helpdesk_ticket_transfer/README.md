@@ -13,6 +13,8 @@ This module enables transferring helpdesk tickets from one Odoo instance to anot
 - **Connection Testing**: Test connection to destination Odoo before transfer
 - **Flexible Options**: Choose what to transfer (messages, followers, attachments)
 - **Auto-close Option**: Optionally close the original ticket after transfer
+- **Partner Management**: Configure child and parent partner relationships for transfers
+- **Stage Mapping**: Map source helpdesk stages to destination stages automatically
 
 ## Installation
 
@@ -38,6 +40,21 @@ This module enables transferring helpdesk tickets from one Odoo instance to anot
    - **API Key/Password**: Password or API key for authentication
 4. Click **Test Connection** to verify the configuration
 5. Save the configuration
+
+#### Partner Configuration Tab
+Configure default partner relationships for transferred tickets:
+- **Transfer Child Partner**: The partner that will be assigned to tickets during transfer
+- **Transfer Parent Partner**: The parent company/organization for the child partner
+
+#### Stage Mappings Tab
+Map your source system stages to destination system stages:
+1. Click **Add a line**
+2. Select the **Source Stage** from your current system
+3. Enter the exact **Destination Stage Name** as it appears in the remote system
+4. Optionally add notes about the mapping
+5. Use drag handle to reorder mappings
+
+**Important**: Stage names must match exactly (case-sensitive) on the destination system.
 
 ### 2. User Permissions
 - **Helpdesk User**: Can transfer tickets and view transfer history
@@ -71,7 +88,22 @@ This module enables transferring helpdesk tickets from one Odoo instance to anot
 ### Models
 
 #### `helpdesk.transfer.config`
-Stores configuration for destination Odoo instances with authentication details.
+Stores configuration for destination Odoo instances with authentication details, partner relationships, and stage mappings.
+
+Fields:
+- Connection settings (URL, database, credentials)
+- `transfer_partner_child_id`: Default child partner for transfers
+- `transfer_partner_parent_id`: Default parent partner for transfers
+- `stage_mapping_ids`: One2many relation to stage mappings
+
+#### `helpdesk.transfer.stage.mapping`
+Maps source helpdesk stages to destination stage names.
+
+Fields:
+- `config_id`: Link to transfer configuration
+- `source_stage_id`: Stage in the source system
+- `destination_stage_name`: Name of the stage in the destination system
+- `sequence`: Order of mappings
 
 #### `helpdesk.ticket.transfer.history`
 Records each transfer attempt with statistics and status.

@@ -133,6 +133,7 @@ class HelpdeskTicketTransferWizard(models.TransientModel):
     def _prepare_ticket_data(self):
         """Prepare ticket data for transfer"""
         ticket = self.ticket_id
+        config = self.config_id
         
         data = {
             'name': ticket.name,
@@ -145,6 +146,26 @@ class HelpdeskTicketTransferWizard(models.TransientModel):
             data['partner_name'] = ticket.partner_id.name
             data['partner_email'] = ticket.partner_id.email or ''
             data['partner_phone'] = ticket.partner_id.phone or ''
+        
+        # Add transfer partner configuration (child/parent)
+        if config.transfer_partner_child_id:
+            data['transfer_partner_child'] = {
+                'name': config.transfer_partner_child_id.name,
+                'email': config.transfer_partner_child_id.email or '',
+                'phone': config.transfer_partner_child_id.phone or '',
+            }
+        
+        if config.transfer_partner_parent_id:
+            data['transfer_partner_parent'] = {
+                'name': config.transfer_partner_parent_id.name,
+                'email': config.transfer_partner_parent_id.email or '',
+                'phone': config.transfer_partner_parent_id.phone or '',
+            }
+        
+        # Add stage mapping if configured
+        if ticket.stage_id:
+            data['source_stage_id'] = ticket.stage_id.id
+            data['source_stage_name'] = ticket.stage_id.name
         
         if ticket.user_id:
             data['assigned_user_name'] = ticket.user_id.name
@@ -200,6 +221,108 @@ class HelpdeskTicketTransferWizard(models.TransientModel):
                     remote_values['partner_id'] = partner_id
             except Exception as e:
                 _logger.warning(f'Could not create/find partner: {str(e)}')
+        
+        # Handle transfer partner child
+        if ticket_data.get('transfer_partner_child'):
+            try:
+                child_data = ticket_data['transfer_partner_child']
+                # Search for child partner by email on remote
+                child_partner_ids = config.call_remote_method(
+                    'res.partner',
+                    'search',
+                    args=[[('email', '=', child_data['email'])]],
+                    kwargs={'limit': 1}
+                ) if child_data.get('email') else []
+                
+                if child_partner_ids:
+                    remote_values['partner_id'] = child_partner_ids[0]
+                elif child_data.get('name'):
+                    # Create child partner if not found
+                    child_partner_id = config.call_remote_method(
+                        'res.partner',
+                        'create',
+                        args=[{
+                            'name': child_data['name'],
+                            'email': child_data.get('email', ''),
+                            'phone': child_data.get('phone', ''),
+                        }]
+                    )
+                    remote_values['partner_id'] = child_partner_id
+            except Exception as e:
+                _logger.warning(f'Could not create/find child partner: {str(e)}')
+        
+        # Handle transfer partner parent
+        if ticket_data.get('transfer_partner_parent'):
+            try:
+                parent_data = ticket_data['transfer_partner_parent']
+                # Search for parent partner by email on remote
+                parent_partner_ids = config.call_remote_method(
+                    'res.partner',
+                    'search',
+                    args=[[('email', '=', parent_data['email'])]],
+                    kwargs={'limit': 1}
+                ) if parent_data.get('email') else []
+                
+                if parent_partner_ids:
+                    # If we have a child partner already set, set the parent relationship
+                    if remote_values.get('partner_id'):
+                        try:
+                            config.call_remote_method(
+                                'res.partner',
+                                'write',
+                                args=[[remote_values['partner_id']], {'parent_id': parent_partner_ids[0]}]
+                            )
+                        except Exception as e:
+                            _logger.warning(f'Could not set parent relationship: {str(e)}')
+                elif parent_data.get('name'):
+                    # Create parent partner if not found
+                    parent_partner_id = config.call_remote_method(
+                        'res.partner',
+                        'create',
+                        args=[{
+                            'name': parent_data['name'],
+                            'email': parent_data.get('email', ''),
+                            'phone': parent_data.get('phone', ''),
+                        }]
+                    )
+                    # Set parent relationship if we have a child partner
+                    if remote_values.get('partner_id'):
+                        try:
+                            config.call_remote_method(
+                                'res.partner',
+                                'write',
+                                args=[[remote_values['partner_id']], {'parent_id': parent_partner_id}]
+                            )
+                        except Exception as e:
+                            _logger.warning(f'Could not set parent relationship: {str(e)}')
+            except Exception as e:
+                _logger.warning(f'Could not create/find parent partner: {str(e)}')
+        
+        # Handle stage mapping
+        if ticket_data.get('source_stage_id'):
+            try:
+                # Look for stage mapping in configuration
+                stage_mapping = self.env['helpdesk.transfer.stage.mapping'].search([
+                    ('config_id', '=', config.id),
+                    ('source_stage_id', '=', ticket_data['source_stage_id'])
+                ], limit=1)
+                
+                if stage_mapping:
+                    # Search for the destination stage by name
+                    remote_stage_ids = config.call_remote_method(
+                        'helpdesk.stage',
+                        'search',
+                        args=[[('name', '=', stage_mapping.destination_stage_name)]],
+                        kwargs={'limit': 1}
+                    )
+                    
+                    if remote_stage_ids:
+                        remote_values['stage_id'] = remote_stage_ids[0]
+                        _logger.info(f'Mapped stage {ticket_data["source_stage_name"]} to {stage_mapping.destination_stage_name}')
+                    else:
+                        _logger.warning(f'Destination stage "{stage_mapping.destination_stage_name}" not found on remote system')
+            except Exception as e:
+                _logger.warning(f'Could not map stage: {str(e)}')
         
         # Create the ticket
         remote_ticket_id = config.call_remote_method(
