@@ -17,6 +17,8 @@
         * Configure multiple destination Odoo instances
         * Secure API authentication
         * Transfer history tracking
+        * Partner child/parent relationship management
+        * Stage mapping between source and destination systems
     """,
     'author': 'Your Company',
     'website': 'https://www.yourcompany.com',

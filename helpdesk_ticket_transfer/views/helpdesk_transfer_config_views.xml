@@ -36,6 +36,42 @@
                         </group>
                     </group>
                     <notebook>
+                        <page string="Partner Configuration">
+                            <group>
+                                <group>
+                                    <field name="transfer_partner_child_id" options="{'no_create': True}"/>
+                                </group>
+                                <group>
+                                    <field name="transfer_partner_parent_id" options="{'no_create': True}"/>
+                                </group>
+                            </group>
+                            <separator string="Partner Transfer Notes"/>
+                            <div class="text-muted">
+                                <p>Configure default child and parent partners for ticket transfers:</p>
+                                <ul>
+                                    <li><b>Transfer Child Partner:</b> The partner that will be assigned to tickets during transfer</li>
+                                    <li><b>Transfer Parent Partner:</b> The parent partner that will be set for the child partner</li>
+                                </ul>
+                            </div>
+                        </page>
+                        <page string="Stage Mappings">
+                            <field name="stage_mapping_ids">
+                                <tree editable="bottom">
+                                    <field name="sequence" widget="handle"/>
+                                    <field name="source_stage_id"/>
+                                    <field name="destination_stage_name"/>
+                                    <field name="notes"/>
+                                </tree>
+                            </field>
+                            <separator string="Stage Mapping Notes"/>
+                            <div class="text-muted">
+                                <p>Map source system stages to destination system stage names:</p>
+                                <ul>
+                                    <li><b>Source Stage:</b> The stage in your current system</li>
+                                    <li><b>Destination Stage Name:</b> The exact name of the stage in the remote system</li>
+                                </ul>
+                            </div>
+                        </page>
                         <page string="Notes">
                             <field name="notes" placeholder="Add any notes about this configuration..."/>
                         </page>

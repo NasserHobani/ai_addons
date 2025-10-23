@@ -21,6 +21,26 @@ class HelpdeskTransferConfig(models.Model):
     notes = fields.Text(string='Notes')
     last_test_date = fields.Datetime(string='Last Connection Test', readonly=True)
     last_test_result = fields.Char(string='Last Test Result', readonly=True)
+    
+    # Partner Transfer Configuration
+    transfer_partner_child_id = fields.Many2one(
+        'res.partner',
+        string='Transfer Child Partner',
+        help='Default child partner to assign when transferring tickets'
+    )
+    transfer_partner_parent_id = fields.Many2one(
+        'res.partner',
+        string='Transfer Parent Partner',
+        help='Default parent partner to assign when transferring tickets'
+    )
+    
+    # Stage Transfer Configuration
+    stage_mapping_ids = fields.One2many(
+        'helpdesk.transfer.stage.mapping',
+        'config_id',
+        string='Stage Mappings',
+        help='Map source stages to destination stages'
+    )
 
     @api.constrains('odoo_url')
     def _check_odoo_url(self):
@@ -124,3 +144,34 @@ class HelpdeskTransferConfig(models.Model):
             raise ValidationError(_('Remote call failed: %s') % error_msg)
         
         return result.get('result')
+
+
+class HelpdeskTransferStageMapping(models.Model):
+    _name = 'helpdesk.transfer.stage.mapping'
+    _description = 'Helpdesk Transfer Stage Mapping'
+    _order = 'sequence, id'
+
+    config_id = fields.Many2one(
+        'helpdesk.transfer.config',
+        string='Transfer Configuration',
+        required=True,
+        ondelete='cascade'
+    )
+    sequence = fields.Integer(string='Sequence', default=10)
+    source_stage_id = fields.Many2one(
+        'helpdesk.stage',
+        string='Source Stage',
+        required=True,
+        help='Stage in the source system'
+    )
+    destination_stage_name = fields.Char(
+        string='Destination Stage Name',
+        required=True,
+        help='Name of the stage in the destination system'
+    )
+    notes = fields.Text(string='Notes')
+
+    _sql_constraints = [
+        ('unique_source_stage', 'unique(config_id, source_stage_id)',
+         'Source stage must be unique per configuration!')
+    ]
