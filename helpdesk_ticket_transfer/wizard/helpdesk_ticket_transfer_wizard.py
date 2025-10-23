@@ -416,13 +416,19 @@ class HelpdeskTicketTransferWizard(models.TransientModel):
         
         for attachment in attachments:
             try:
+                if not attachment.datas:
+                    _logger.warning(f'Attachment {attachment.id} ({attachment.name}) has no data, skipping')
+                    continue
+                
                 # Create attachment on remote
+                # attachment.datas is already base64 encoded, pass it directly
                 attachment_data = {
                     'name': attachment.name,
-                    'datas': attachment.datas.decode('utf-8') if isinstance(attachment.datas, bytes) else attachment.datas,
+                    'datas': attachment.datas,
                     'res_model': 'helpdesk.ticket',
                     'res_id': remote_ticket_id,
-                    'mimetype': attachment.mimetype,
+                    'mimetype': attachment.mimetype or 'application/octet-stream',
+                    'description': attachment.description or '',
                 }
                 
                 config.call_remote_method(
@@ -431,7 +437,8 @@ class HelpdeskTicketTransferWizard(models.TransientModel):
                     args=[attachment_data]
                 )
                 count += 1
+                _logger.info(f'Successfully transferred attachment {attachment.id} ({attachment.name})')
             except Exception as e:
-                _logger.warning(f'Failed to transfer attachment {attachment.id}: {str(e)}')
+                _logger.error(f'Failed to transfer attachment {attachment.id} ({attachment.name}): {str(e)}')
         
         return count
