@@ -1,0 +1,259 @@
+# Nginx Configuration for Odoo 17 with Extended Timeouts
+# Place this in /etc/nginx/sites-available/odoo and symlink to sites-enabled
+
+# Define upstream servers
+upstream odoo {
+    server 127.0.0.1:8069 weight=1 fail_timeout=300s;
+}
+
+upstream odoochat {
+    server 127.0.0.1:8072 weight=1 fail_timeout=300s;
+}
+
+# Redirect HTTP to HTTPS
+server {
+    listen 80;
+    server_name your-domain.com www.your-domain.com;
+    
+    # Redirect all HTTP requests to HTTPS
+    return 301 https://$server_name$request_uri;
+}
+
+# Main HTTPS server block
+server {
+    listen 443 ssl http2;
+    server_name your-domain.com www.your-domain.com;
+
+    # SSL Configuration
+    ssl_certificate /etc/letsencrypt/live/your-domain.com/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/your-domain.com/privkey.pem;
+    ssl_session_timeout 1d;
+    ssl_session_cache shared:SSL:50m;
+    ssl_session_tickets off;
+
+    # Modern SSL configuration
+    ssl_protocols TLSv1.2 TLSv1.3;
+    ssl_ciphers 'ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384';
+    ssl_prefer_server_ciphers off;
+
+    # HSTS (optional but recommended)
+    add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;
+
+    # =========================================================================
+    # TIMEOUT SETTINGS - Critical for preventing 504 Gateway Timeout errors
+    # =========================================================================
+    
+    # Connection timeout with upstream server
+    proxy_connect_timeout 600s;
+    
+    # Timeout for transmitting request to upstream server
+    proxy_send_timeout 600s;
+    
+    # Timeout for reading response from upstream server
+    # THIS IS THE MOST IMPORTANT for long-running Odoo operations
+    proxy_read_timeout 600s;
+    
+    # Timeout for transmitting response to client
+    send_timeout 600s;
+    
+    # Client body (upload) timeout
+    client_body_timeout 600s;
+    
+    # Client header timeout
+    client_header_timeout 600s;
+
+    # Keepalive timeout
+    keepalive_timeout 65s;
+
+    # =========================================================================
+    # BUFFER SETTINGS - Prevents memory issues with large responses
+    # =========================================================================
+    
+    proxy_buffer_size 128k;
+    proxy_buffers 4 256k;
+    proxy_busy_buffers_size 256k;
+    proxy_temp_file_write_size 256k;
+    
+    # =========================================================================
+    # SIZE LIMITS - For file uploads
+    # =========================================================================
+    
+    # Maximum allowed size of client request body
+    client_max_body_size 100M;
+    
+    # Size of buffer for reading client request header
+    client_header_buffer_size 4k;
+    large_client_header_buffers 4 8k;
+
+    # =========================================================================
+    # GENERAL PROXY SETTINGS
+    # =========================================================================
+    
+    # Preserve client information
+    proxy_set_header Host $host;
+    proxy_set_header X-Real-IP $remote_addr;
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    proxy_set_header X-Forwarded-Proto $scheme;
+    proxy_set_header X-Forwarded-Host $host;
+    proxy_set_header X-Forwarded-Port $server_port;
+    
+    # Don't rewrite redirects
+    proxy_redirect off;
+    
+    # Enable buffering for better performance
+    proxy_buffering on;
+
+    # =========================================================================
+    # LOGGING
+    # =========================================================================
+    
+    access_log /var/log/nginx/odoo-access.log;
+    error_log /var/log/nginx/odoo-error.log;
+
+    # =========================================================================
+    # GZIP COMPRESSION
+    # =========================================================================
+    
+    gzip on;
+    gzip_types text/css text/scss text/plain text/xml application/xml application/json application/javascript;
+    gzip_min_length 1000;
+    gzip_vary on;
+    gzip_proxied any;
+    gzip_comp_level 6;
+
+    # =========================================================================
+    # LOCATION BLOCKS
+    # =========================================================================
+
+    # Main Odoo application
+    location / {
+        proxy_pass http://odoo;
+        
+        # Optional: Add additional timeout for specific operations
+        # Uncomment if you need even longer timeouts for specific paths
+        # proxy_read_timeout 1200s;
+    }
+
+    # Odoo long-polling route for live chat and notifications
+    location /longpolling {
+        proxy_pass http://odoochat;
+        
+        # Long-polling specific settings
+        proxy_buffering off;
+        proxy_cache off;
+        
+        # Extended timeout for long-polling connections
+        proxy_read_timeout 3600s;
+        proxy_connect_timeout 3600s;
+        proxy_send_timeout 3600s;
+    }
+
+    # Odoo websocket (Odoo 17+)
+    location /websocket {
+        proxy_pass http://odoochat;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "upgrade";
+        
+        # Websocket timeouts
+        proxy_read_timeout 3600s;
+        proxy_connect_timeout 3600s;
+        proxy_send_timeout 3600s;
+    }
+
+    # Static files caching
+    location ~* /web/static/ {
+        proxy_pass http://odoo;
+        
+        # Cache static files for 7 days
+        proxy_cache_valid 200 7d;
+        proxy_cache_bypass $http_pragma $http_authorization;
+        expires 7d;
+        add_header Cache-Control "public, immutable";
+    }
+
+    # Protect sensitive directories
+    location ~ ^/web/(database|tests|modules) {
+        deny all;
+        return 404;
+    }
+
+    # Health check endpoint (optional)
+    location /health {
+        proxy_pass http://odoo/web/health;
+        access_log off;
+        
+        # Short timeout for health checks
+        proxy_connect_timeout 2s;
+        proxy_read_timeout 2s;
+    }
+}
+
+# =========================================================================
+# ADDITIONAL CONFIGURATIONS FOR SPECIFIC TIMEOUT SCENARIOS
+# =========================================================================
+
+# If you have specific routes that need even longer timeouts, 
+# you can create additional location blocks:
+
+# Example: Extended timeout for report generation
+# server {
+#     # ... (include all settings from above)
+#     
+#     location ~ ^/report/ {
+#         proxy_pass http://odoo;
+#         proxy_read_timeout 1800s;  # 30 minutes
+#         proxy_send_timeout 1800s;
+#         proxy_connect_timeout 1800s;
+#     }
+# }
+
+# Example: Extended timeout for imports/exports
+# server {
+#     # ... (include all settings from above)
+#     
+#     location ~ ^/(web/content|web/binary) {
+#         proxy_pass http://odoo;
+#         proxy_read_timeout 1800s;  # 30 minutes
+#         client_max_body_size 500M;  # Larger upload limit
+#     }
+# }
+
+# =========================================================================
+# LOAD BALANCING (if you have multiple Odoo instances)
+# =========================================================================
+
+# upstream odoo {
+#     least_conn;  # Use least connections algorithm
+#     server 127.0.0.1:8069 weight=1 max_fails=3 fail_timeout=30s;
+#     server 127.0.0.1:8070 weight=1 max_fails=3 fail_timeout=30s;
+#     keepalive 32;  # Keep connections alive
+# }
+
+# upstream odoochat {
+#     ip_hash;  # Sticky sessions for websockets
+#     server 127.0.0.1:8072 weight=1 max_fails=3 fail_timeout=30s;
+#     server 127.0.0.1:8073 weight=1 max_fails=3 fail_timeout=30s;
+# }
+
+# =========================================================================
+# RATE LIMITING (to prevent DoS attacks)
+# =========================================================================
+
+# Define rate limit zones
+# limit_req_zone $binary_remote_addr zone=odoo_limit:10m rate=10r/s;
+# limit_conn_zone $binary_remote_addr zone=addr:10m;
+
+# Apply in server block:
+# limit_req zone=odoo_limit burst=20 nodelay;
+# limit_conn addr 10;
+
+# =========================================================================
+# TESTING THE CONFIGURATION
+# =========================================================================
+
+# After creating this configuration:
+# 1. Test syntax: sudo nginx -t
+# 2. Reload nginx: sudo systemctl reload nginx
+# 3. Check logs: sudo tail -f /var/log/nginx/odoo-error.log
+# 4. Monitor timeouts: sudo tail -f /var/log/nginx/odoo-access.log | grep 504

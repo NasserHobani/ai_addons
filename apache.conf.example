@@ -1,0 +1,268 @@
+# Apache Configuration for Odoo 17 with Extended Timeouts
+# Place this in /etc/apache2/sites-available/odoo.conf and enable with:
+# sudo a2ensite odoo.conf
+# sudo a2enmod proxy proxy_http headers rewrite ssl
+# sudo systemctl restart apache2
+
+<VirtualHost *:80>
+    ServerName your-domain.com
+    ServerAlias www.your-domain.com
+    ServerAdmin admin@your-domain.com
+    
+    # Redirect all HTTP traffic to HTTPS
+    Redirect permanent / https://your-domain.com/
+</VirtualHost>
+
+<VirtualHost *:443>
+    ServerName your-domain.com
+    ServerAlias www.your-domain.com
+    ServerAdmin admin@your-domain.com
+    
+    # =========================================================================
+    # SSL CONFIGURATION
+    # =========================================================================
+    
+    SSLEngine on
+    SSLCertificateFile /etc/letsencrypt/live/your-domain.com/fullchain.pem
+    SSLCertificateKeyFile /etc/letsencrypt/live/your-domain.com/privkey.pem
+    
+    # Modern SSL configuration
+    SSLProtocol all -SSLv2 -SSLv3 -TLSv1 -TLSv1.1
+    SSLCipherSuite HIGH:!aNULL:!MD5:!3DES
+    SSLHonorCipherOrder on
+    
+    # HSTS (optional but recommended)
+    Header always set Strict-Transport-Security "max-age=31536000; includeSubDomains"
+    
+    # =========================================================================
+    # TIMEOUT SETTINGS - Critical for preventing 504 Gateway Timeout errors
+    # =========================================================================
+    
+    # Global timeout for completing the request
+    Timeout 600
+    
+    # Proxy timeout settings
+    ProxyTimeout 600
+    ProxyPreserveHost On
+    
+    # Keep-alive settings
+    KeepAlive On
+    KeepAliveTimeout 65
+    MaxKeepAliveRequests 200
+    
+    # =========================================================================
+    # SIZE LIMITS
+    # =========================================================================
+    
+    # Maximum size for uploaded files (100MB)
+    LimitRequestBody 104857600
+    
+    # =========================================================================
+    # LOGGING
+    # =========================================================================
+    
+    ErrorLog ${APACHE_LOG_DIR}/odoo-error.log
+    CustomLog ${APACHE_LOG_DIR}/odoo-access.log combined
+    
+    # Log slow requests (optional)
+    # LogLevel info ssl:warn
+    
+    # =========================================================================
+    # PROXY CONFIGURATION
+    # =========================================================================
+    
+    # Main Odoo application
+    <Location />
+        ProxyPass http://localhost:8069/ timeout=600 retry=0
+        ProxyPassReverse http://localhost:8069/
+        
+        # Preserve host information
+        RequestHeader set X-Forwarded-Proto "https"
+        RequestHeader set X-Forwarded-Host "%{HTTP_HOST}e"
+        RequestHeader set X-Forwarded-For "%{REMOTE_ADDR}e"
+    </Location>
+    
+    # Long-polling for chat and notifications
+    <Location /longpolling>
+        ProxyPass http://localhost:8072/longpolling timeout=3600 retry=0
+        ProxyPassReverse http://localhost:8072/longpolling
+        
+        # Disable buffering for long-polling
+        SetEnv proxy-sendchunked 1
+        SetEnv proxy-nokeepalive 1
+        
+        # Extended timeout for long-polling
+        ProxyTimeout 3600
+    </Location>
+    
+    # Websocket support (Odoo 17+)
+    <Location /websocket>
+        ProxyPass ws://localhost:8072/websocket timeout=3600 retry=0
+        ProxyPassReverse ws://localhost:8072/websocket
+        
+        # Websocket specific settings
+        RewriteEngine On
+        RewriteCond %{HTTP:Upgrade} websocket [NC]
+        RewriteCond %{HTTP:Connection} upgrade [NC]
+        RewriteRule ^/?(.*) "ws://localhost:8072/$1" [P,L]
+        
+        ProxyTimeout 3600
+    </Location>
+    
+    # Static files caching
+    <LocationMatch "^/web/static/">
+        ProxyPass http://localhost:8069/web/static/ timeout=600
+        ProxyPassReverse http://localhost:8069/web/static/
+        
+        # Cache control for static files
+        Header set Cache-Control "public, max-age=604800, immutable"
+        ExpiresActive On
+        ExpiresDefault "access plus 7 days"
+    </LocationMatch>
+    
+    # =========================================================================
+    # SECURITY SETTINGS
+    # =========================================================================
+    
+    # Deny access to sensitive directories
+    <LocationMatch "^/web/(database|tests|modules)">
+        Require all denied
+    </LocationMatch>
+    
+    # Security headers
+    Header always set X-Content-Type-Options "nosniff"
+    Header always set X-Frame-Options "SAMEORIGIN"
+    Header always set X-XSS-Protection "1; mode=block"
+    Header always set Referrer-Policy "same-origin"
+    
+    # =========================================================================
+    # COMPRESSION
+    # =========================================================================
+    
+    <IfModule mod_deflate.c>
+        AddOutputFilterByType DEFLATE text/html text/plain text/xml text/css
+        AddOutputFilterByType DEFLATE text/javascript application/javascript application/json
+        AddOutputFilterByType DEFLATE application/xml application/xhtml+xml
+    </IfModule>
+</VirtualHost>
+
+# =========================================================================
+# ADDITIONAL CONFIGURATION FOR SPECIFIC TIMEOUT SCENARIOS
+# =========================================================================
+
+# If you need specific routes with even longer timeouts, create additional
+# location blocks with custom timeout settings
+
+# Example: Extended timeout for report generation
+# <Location /report>
+#     ProxyPass http://localhost:8069/report timeout=1800
+#     ProxyPassReverse http://localhost:8069/report
+#     ProxyTimeout 1800
+# </Location>
+
+# Example: Extended timeout for file uploads/downloads
+# <LocationMatch "^/(web/content|web/binary)">
+#     ProxyPass http://localhost:8069/ timeout=1800
+#     ProxyPassReverse http://localhost:8069/
+#     ProxyTimeout 1800
+#     LimitRequestBody 524288000  # 500MB for large files
+# </LocationMatch>
+
+# =========================================================================
+# LOAD BALANCING (if you have multiple Odoo instances)
+# =========================================================================
+
+# <Proxy balancer://odoo>
+#     BalancerMember http://127.0.0.1:8069 timeout=600 retry=0
+#     BalancerMember http://127.0.0.1:8070 timeout=600 retry=0
+#     ProxySet lbmethod=byrequests
+#     ProxySet stickysession=SERVERID
+# </Proxy>
+# 
+# <Proxy balancer://odoochat>
+#     BalancerMember http://127.0.0.1:8072 timeout=3600 retry=0 route=server1
+#     BalancerMember http://127.0.0.1:8073 timeout=3600 retry=0 route=server2
+#     ProxySet lbmethod=bytraffic
+#     ProxySet stickysession=SERVERID
+# </Proxy>
+# 
+# <Location />
+#     ProxyPass balancer://odoo/
+#     ProxyPassReverse balancer://odoo/
+# </Location>
+# 
+# <Location /longpolling>
+#     ProxyPass balancer://odoochat/longpolling
+#     ProxyPassReverse balancer://odoochat/longpolling
+# </Location>
+
+# =========================================================================
+# RATE LIMITING (to prevent DoS attacks)
+# =========================================================================
+
+# Requires mod_evasive or mod_qos
+# Example with mod_qos:
+# <IfModule mod_qos.c>
+#     # Maximum number of connections per IP
+#     QS_SrvMaxConnPerIP 20
+#     
+#     # Request rate limit
+#     QS_SrvRequestRate 100 5
+# </IfModule>
+
+# =========================================================================
+# MONITORING ENDPOINTS
+# =========================================================================
+
+# Health check endpoint (optional)
+# <Location /health>
+#     ProxyPass http://localhost:8069/web/health timeout=2
+#     ProxyPassReverse http://localhost:8069/web/health
+#     ProxyTimeout 2
+#     
+#     # Don't log health checks
+#     SetEnvIf Request_URI "^/health$" dontlog
+#     CustomLog ${APACHE_LOG_DIR}/odoo-access.log combined env=!dontlog
+# </Location>
+
+# =========================================================================
+# MPM WORKER CONFIGURATION (for high concurrency)
+# =========================================================================
+
+# Add to your main Apache configuration or mods-available/mpm_worker.conf
+# <IfModule mpm_worker_module>
+#     ServerLimit          16
+#     StartServers          2
+#     MinSpareThreads      25
+#     MaxSpareThreads      75
+#     ThreadsPerChild      25
+#     MaxRequestWorkers   400
+#     MaxConnectionsPerChild 1000
+#     ThreadLimit          64
+# </IfModule>
+
+# =========================================================================
+# TESTING THE CONFIGURATION
+# =========================================================================
+
+# After creating this configuration:
+# 1. Test syntax: sudo apache2ctl configtest
+# 2. Enable site: sudo a2ensite odoo.conf
+# 3. Reload Apache: sudo systemctl reload apache2
+# 4. Check logs: sudo tail -f /var/log/apache2/odoo-error.log
+# 5. Monitor timeouts: sudo tail -f /var/log/apache2/odoo-access.log | grep 504
+
+# =========================================================================
+# REQUIRED MODULES
+# =========================================================================
+
+# Enable required Apache modules:
+# sudo a2enmod proxy
+# sudo a2enmod proxy_http
+# sudo a2enmod proxy_wstunnel  # For websocket support
+# sudo a2enmod headers
+# sudo a2enmod rewrite
+# sudo a2enmod ssl
+# sudo a2enmod expires
+# sudo a2enmod deflate
+# sudo systemctl restart apache2
